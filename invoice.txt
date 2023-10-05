@@ -1,0 +1,19 @@
+INVOICE
+=======
+
+1. Car: 161250.0 SEK
+    Chassis: 50000.0 SEK
+    Tires: 12000.0 SEK
+    Engine: 99250.0 SEK
+    Total: 161250.0 SEK
+2. Motorcycle: 58750.0 SEK
+    Chassis: 20000.0 SEK
+    Tires: 4000.0 SEK
+    Engine: 34750.0 SEK
+    Total: 58750.0 SEK
+3. Bicycle: 3600.0 SEK
+    Chassis: 2000.0 SEK
+    Tires: 1600.0 SEK
+    Total: 3600.0 SEK
+
+Total Cost: 223600.0 SEK
