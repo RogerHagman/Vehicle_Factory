@@ -8,175 +8,116 @@ class VehicleType(Enum):
     BICYCLE = 3
 
 class Vehicle(ABC):
-    @abstractmethod
-    def get_name(self) -> str:
-        """Returns the name of the vehicle."""
-        pass
-    
-    @property
-    @abstractmethod
-    def tires(self):
-        pass
-
-    @property
-    @abstractmethod
-    def total_cost(self):
-        pass
-
-    @total_cost.setter
-    @abstractmethod
-    def total_cost(self, cost: float):
-        pass
-    
-    @abstractmethod
-    def fit_tires(self):
-        """Will fit an appropriate number of tires depending on the 
-        vehicle type."""
-        pass
-    
-class MotorVehicle(ABC):
-    
-    @property
-    @abstractmethod
-    def engine_size(self):
-        pass
-    
-    @engine_size.setter
-    @abstractmethod
-    def engine_size(self, size_cc: int):
-        pass
-    
-    @property
-    def engine_fitted(self) -> bool:
-        return self.engine_size is not None
-
-    @abstractmethod
-    def fit_engine(self, size_cc: int):
-        pass
-    
-    @abstractmethod
-    def replace_engine(self, size_cc: int):
-        pass
-
-class Car(Vehicle, MotorVehicle):
-    _engine_size = None
-    _no_of_tires = None
     _total_cost = 0
-
+    _no_of_tires = 0
+    
+    @property
+    @abstractmethod
+    def chassis_cost(self) -> float:
+        pass
+    
+    def fit_chassis(self):
+        self._total_cost += self.chassis_cost
+    
+    def fit_tires(self, no_of_tires: int):
+        """Fit n tires to the vehicle."""
+        self._no_of_tires = no_of_tires
+        self._total_cost += self._no_of_tires * self.tire_cost
+    
+    @abstractmethod
+    def assemble_vehicle(self):
+        """Assemble the vehicle."""
+        pass
+    
+    @property
+    @abstractmethod
+    def tire_cost(self) -> float:
+        pass
+    
+    @abstractmethod
     def get_name(self) -> str:
         return self.__class__.__name__
-    
-    @property
-    def tires(self):
-        return self._no_of_tires
-    
-    @tires.setter
-    def tires(self, value):
-        self._no_of_tires = value
-        self._total_cost += value * 3000
-    
-    def fit_tires(self):
-        """Fit 4 tires to the car."""
-        self.tires = 4
     
     @property
     def total_cost(self):
         return self._total_cost
     
-    @total_cost.setter
-    def total_cost(self, cost: float):
-        self._total_cost += cost
-
-    @property
-    def engine_size(self):
-        return self._engine_size
-
-    @engine_size.setter
-    def engine_size(self, size_cc: int):
-        self._engine_size = size_cc
-
-    def fit_engine(self, size_cc: int):
-        self._total_cost += 25000 + (49.50 * size_cc)
-        self.engine_size = size_cc
-
-    def replace_engine(self, size_cc: int):
-        self._total_cost += 20000 + (49.50 * size_cc)
-        self.engine_size = size_cc
-
-class Motorcycle(Vehicle, MotorVehicle):
+    
+class EnginePoweredVehicle(Vehicle, ABC):
     _engine_size = None
-    _no_of_tires = None
-    _total_cost = 0
-
-    def get_name(self) -> str:
-        return self.__class__.__name__
     
-    @property
-    def tires(self):
-        return self._no_of_tires
-    
-    @tires.setter
-    def tires(self, value):
-        self._no_of_tires = value
-        self._total_cost += value * 2000
-
-    def fit_tires(self):
-        """Fit 2 tires to the motorcycle."""
-        self.tires = 2
-
-    @property
-    def total_cost(self):
-        return self._total_cost
-    
-    @total_cost.setter
-    def total_cost(self, cost: float):
-        self._total_cost += cost
-    
-    @property
-    def engine_size(self):
-        return self._engine_size
-
-    @engine_size.setter
-    def engine_size(self, size_cc: int):
-        self._engine_size = size_cc
+    @abstractmethod
+    def calculate_engine_cost(self, size_cc: int) -> float:
+        pass
     
     def fit_engine(self, size_cc: int):
-        self._total_cost += 15000 + (39.50 * size_cc)
-        self.engine_size = size_cc
+        engine_cost = self.calculate_engine_cost(size_cc)
+        self._total_cost += engine_cost
+        self._engine_size = size_cc
+        print(f"{self.get_name()} engine ({size_cc}cc) cost: {engine_cost:.0f} SEK")
+
+
+class Car(EnginePoweredVehicle):
     
-    def replace_engine(self, size_cc: int):
-        self._total_cost += 10000 + (39.50 * size_cc)
-        self.engine_size = size_cc
+    def get_name(self) -> str:
+        return super().get_name()
+
+    @property
+    def chassis_cost(self) -> float:
+        return 50_000.00
+    
+    @property
+    def tire_cost(self) -> float:
+        return 3000.0
+    
+    def calculate_engine_cost(self, size_cc: int) -> float:
+        return 25_000 + (49.50 * size_cc)
+    
+    def assemble_vehicle(self):
+        self.fit_chassis()
+        self.fit_tires(4)
+        self.fit_engine(1800)
+        print(f"{self.get_name()} assembled with total cost: {self.total_cost:.0f} SEK\n")
+
+
+class Motorcycle(EnginePoweredVehicle):
+    
+    def get_name(self) -> str:
+        return super().get_name()
+    
+    @property
+    def chassis_cost(self) -> float:
+        return 15_000.00
+    
+    @property
+    def tire_cost(self) -> float:
+        return 2000.0
+    
+    def calculate_engine_cost(self, size_cc: int) -> float:
+        return 15_000 + (39.50 * size_cc)
+    
+    def assemble_vehicle(self):
+        self.fit_chassis()
+        self.fit_tires(2)
+        print(f"{self.get_name()} assembled with total cost: {self.total_cost:.0f} SEK\n")
 
 class Bicycle(Vehicle):
     
-    _total_cost = 0
-
     def get_name(self) -> str:
-        return self.__class__.__name__
+        return super().get_name()
     
     @property
-    def tires(self):
-        return self._no_of_tires
+    def chassis_cost(self) -> float:
+        return 2000.00
     
-    @tires.setter
-    def tires(self, value):
-        self._no_of_tires = value
-        self._total_cost += value * 800
-
-    def fit_tires(self):
-        """Fit 2 tires to the bicycle."""
-        self.tires = 2
-
     @property
-    def total_cost(self):
-        return self._total_cost
+    def tire_cost(self) -> float:
+        return 800.0
     
-    @total_cost.setter
-    def total_cost(self, cost: float):
-        self._total_cost += cost
-    
-    
+    def assemble_vehicle(self):
+        self.fit_chassis()
+        self.fit_tires(2)
+        print(f"{self.get_name()} assembled with total cost: {self.total_cost:.0f} SEK\n")
 
 class VehicleFactory:
     @staticmethod
@@ -192,25 +133,23 @@ class VehicleFactory:
             raise ValueError(f"Vehicle type {vehicle_type} not recognized")
 
 def main():
+
     factory = VehicleFactory()
 
     # Create a car
     car = factory.create_vehicle(VehicleType.CAR)
-    car.fit_tires()
-    car.fit_engine(500)  
-    print(f"{car.get_name()} cost with {car.tires} tires and a {car.engine_size}cc engine installed: {car.total_cost:.0f} SEK")
-
+    car.assemble_vehicle()
+    print(f"Total cost for {car.get_name()}: {car.total_cost:.0f} SEK\n")
+    
     # Create a motorcycle
     motorcycle = factory.create_vehicle(VehicleType.MOTORCYCLE)
-    motorcycle.fit_tires()
-    motorcycle.fit_engine(990)  # fitting a 990cc engine
-    print(f"{motorcycle.get_name()} cost with {motorcycle.tires} tires and a {motorcycle.engine_size}cc engine installed: {motorcycle.total_cost:.0f} SEK")
+    motorcycle.assemble_vehicle()
+    print(f"Total cost for {motorcycle.get_name()}: {motorcycle.total_cost:.0f} SEK\n")
 
     # Create a bicycle
     bicycle = factory.create_vehicle(VehicleType.BICYCLE)
-    bicycle.fit_tires()
-    print(f"{bicycle.get_name()} cost with {bicycle.tires} tires installed: {bicycle.total_cost:.0f} SEK")
-
+    bicycle.assemble_vehicle()
+    print(f"Total cost for {bicycle.get_name()}: {bicycle.total_cost:.0f} SEK\n")
 
 if __name__ == '__main__':
     main()
