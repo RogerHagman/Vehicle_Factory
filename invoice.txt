@@ -1,4 +1,17 @@
            INVOICE
 ================================
 
-Total Cost: 0 SEK
+1. Vehicle Type: MOTORCYCLE                     
+    Parts    |    Price 
+    Chassis: 20000 SEK
+    Tires: 4000 SEK
+    Engine: 41700.0 SEK
+    Total: 65700.0 SEK
+
+2. Vehicle Type: BICYCLE                     
+    Parts    |    Price 
+    Chassis: 2000 SEK
+    Tires: 1600 SEK
+    Total: 3600 SEK
+
+Total Cost: 69300.0 SEK
