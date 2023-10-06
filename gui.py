@@ -13,15 +13,46 @@ from kivy.uix.label import Label
 from kivy.uix.widget import Widget
 import logging
 
+logging.basicConfig(filename='app.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
 class MainApp(App):
+    """Main Application Class
+    
+    MainApp serves as the controller for the graphical interface of the
+    vehicle ordering system. It manages the inputs from the user and 
+    employs the `VehicleFactory` and `OrderManager` classes 
+    to process orders and managing diffrent states.
+    
+    Attributes:
+        factory (VehicleFactory): 
+        A factory object to create vehicle instances.
+        order_manager (OrderManager): 
+        A manager object to handle orders.
+    """
     def __init__(self, factory: VehicleFactory, 
                  order_manager: OrderManager, **kwargs):
-
+        """
+        Initializes MainApp with a vehicle factory and an order manager.
+        
+        Args:
+            factory (VehicleFactory): 
+            A factory object to create vehicle instances.
+            order_manager (OrderManager): 
+            A manager object to handle orders.
+        """
         super().__init__(**kwargs)
         self.factory = factory
         self.order_manager = order_manager
 
     def build(self):
+        """
+        Build and initialize the UI elements for the app.
+        
+        Returns:
+            BoxLayout: 
+            A Kivy widget Using the Boxlayout sheme for UI elements.
+        """
         self.factory = VehicleFactory()
         self.order_manager = OrderManager()
         
@@ -76,6 +107,7 @@ class MainApp(App):
                                         size_hint_y=None, 
                                         background_color=[1, 0.8, 0, 1], 
                                         color=[0, 0, 0, 1])
+
         # Fixating the Order button by adding Empty space as padding.       
         button_layout.add_widget(Widget(size_hint_x=0.25))
         button_layout.add_widget(self.place_order_button)
@@ -104,50 +136,120 @@ class MainApp(App):
         return self.main_layout
     
     def generate_invoice(self, instance):
+        """
+        Employs the order manager to generate an invoice.
+        
+        Args:
+            instance (kivy.uix.widget.Widget): 
+            The widget instance that triggered the method.
+        """
         self.order_manager.generate_invoice()
         self.total_cost_label.text = "Invoice Generated!"
+        # Logs The Invoice generation
+        logging.info("Invoice Generated!")
 
-    def on_select(self, instance, vehicle):
+    def on_select(self, instance, vehicle:str):
+        """
+        This is an event handler for selecting vehicle types 
+        from a dropdown menu.
+        
+        Updates the main button text and potentially disables 
+        the engine input based on the vehicle type(i.e Bicycle).
+        
+        Args:
+            instance (kivy.uix.widget.Widget): 
+            The widget instance that triggered the method.
+            vehicle (str): The selected vehicle type as a string.
+        """
         self.main_button.text = vehicle
         self.engine_input.disabled = (vehicle == "Bicycle")
     
     def place_order(self, instance):
+        """
+        Place an order for a vehicle of a specified type and where it
+        applies, engine size.
+        
+        Logs relevant events and errors during the order placement and 
+        updates the UI.
+        
+        Args:
+            instance (kivy.uix.widget.Widget): 
+            The widget instance that triggered the method.
+        """
+        # Loggin the start of order placement
+        logging.info('Attempting to place order...')  
+
         vehicle_type_map = {
             "Car": VehicleType.CAR,
             "Motorcycle": VehicleType.MOTORCYCLE,
             "Bicycle": VehicleType.BICYCLE
         }
         vehicle_type = vehicle_type_map.get(self.main_button.text)
-        
+
         # Check if a vehicle type has been selected
         if vehicle_type is None:
-            popup = Popup(title='Input Error',
-                        content=Label(text='Please select a vehicle type.'),
-                        size_hint=(0.5, 0.3))
-            popup.open()
+            # Logs if the user fails to select a vehicle type(None)
+            logging.warning('Vehicle type not selected.')
+            self.show_popup('Input Error', 'Please select a vehicle type.')
             return
-        
+
         # Displays a popup for the case where the engine 
         # size is not selected when purchasing motor vehicles.
-        if not self.engine_input.disabled and \
-            not self.engine_input.text.strip():
-
-            popup = Popup(title='Input Error',
-                        content=Label(text='Please enter engine size.'),
-                        size_hint=(0.5, 0.3))
-            popup.open()
+        if not self.engine_input.disabled and not self.engine_input.text.strip():
+            # Logs if an engine size has not been selected at all
+            logging.warning('Engine size not provided for motor vehicle.')
+            self.show_popup('Input Error', 'Please enter engine size.')
             return
         
-        engine_size = None if self.engine_input.disabled \
-                            else int(self.engine_input.text)
+        engine_size = None if self.engine_input.disabled else int(self.engine_input.text)
         
-        vehicle = self.factory.create_vehicle(vehicle_type)
-        order = vehicle.assemble_vehicle(engine_size)
-        self.order_manager.add_order(order)
+        if engine_size is not None and (engine_size <= 50 or engine_size > 8000):
+            # Logs invalid engine size inputs
+            logging.warning('Invalid engine size selected: %s', engine_size)
+            self.show_popup('Input Error', 
+                            'An engine of that size cannot be fitted!\
+                            \nLegal sizes: [50cc - 8000cc]')
+            return
+
+        try:
+            # Create a vehicle and assemble it with the given engine size, 
+            # then add the order to the order manager and update total cost.
+            vehicle = self.factory.create_vehicle(vehicle_type)
+            order = vehicle.assemble_vehicle(engine_size)
+            self.order_manager.add_order(order)
+
+            self.total_cost_label.text = \
+                f"Total Cost: {self.order_manager.get_total_cost()}"
+
+            # After placing an order, the order window 
+            # resets and is ready for additional orders.
+            self.engine_input.text = ""
+            
+            # Logging of successful order placement
+            logging.info('Order placed successfully.')  
+
+        except Exception as error:
+            # Logs the exception details 
+            # Also interacts with the uses via Pop-Up message.
+            logging.error('Error occurred while placing order: %s', str(error))
+            self.show_popup(
+                'Error', 
+                'An error occurred while placing the order. Please try again.')
+
+    def show_popup(self, title: str, message: str):
+        """
+        Display a popup window with a specified title and message.
         
-        self.total_cost_label.text = \
-            f"Total Cost: {self.order_manager.get_total_cost()}"
+        Args:
+            title (str): The title of the popup window.
+            message (str): The message to display in the popup window.
+        """
+        message_label = Label(text=message, halign='left', valign='top')
         
-        # After placing an order, the order window 
-        # resets and is ready for additional orders.
-        self.engine_input.text = ""  
+        message_label.text_size = (300, None)
+        message_label.size_hint_y = 0.7
+        
+        popup = Popup(title=title,
+                    content=message_label,
+                    size_hint=(1, 0.5))
+        popup.open()
