@@ -11,7 +11,7 @@ from kivy.core.window import Window
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.uix.widget import Widget
-import re
+import logging
 
 class VehicleType(Enum):
     CAR = 1
@@ -29,12 +29,13 @@ class Vehicle(ABC):
     
     def fit_chassis(self):
         self._total_cost += self.chassis_cost
+        print(f"{self.get_name()} Chassis Fitted")
     
     def fit_tires(self, no_of_tires: int):
         """Fit n tires to the vehicle."""
         self._no_of_tires = no_of_tires
         self._total_cost += self._no_of_tires * self.tire_cost
-    
+        print(f"New tires(x {self._no_of_tires}) fitted")
     def assemble_vehicle_common(self, no_of_tires: int):
         self.fit_chassis()
         self.fit_tires(no_of_tires)
@@ -89,7 +90,7 @@ class EnginePoweredVehicle(Vehicle, ABC):
         engine_cost = self.calculate_engine_cost(size_cc)
         self._total_cost += engine_cost
         self._engine_size = size_cc
-        print(f"{self.get_name()} engine ({size_cc}cc) cost: {engine_cost:.0f} SEK")
+        print(f"New engine ({size_cc}cc) fitted")
 
     def assemble_vehicle_common(self, no_of_tires: int, engine_size_cc: int):
         self.fit_chassis()
@@ -187,6 +188,10 @@ class VehicleFactory:
     @staticmethod
     def create_vehicle(vehicle_type: VehicleType) -> Vehicle:
         """Factory method to create a vehicle based on the given type."""
+        if vehicle_type is None:
+            logging.error("None provided as the vehicle_type")
+            raise ValueError("Vehicle type must not be None")
+
         if vehicle_type == VehicleType.CAR:
             return Car()
         elif vehicle_type == VehicleType.MOTORCYCLE:
@@ -194,6 +199,7 @@ class VehicleFactory:
         elif vehicle_type == VehicleType.BICYCLE:
             return Bicycle()
         else:
+            logging.error(f"Vehicle type {vehicle_type} not recognized")
             raise ValueError(f"Vehicle type {vehicle_type} not recognized")
 
 class OrderManager:
@@ -219,7 +225,7 @@ class OrderManager:
     def format_order(self, order, index=None):
         order_str_list = []
         if index is not None:
-            order_str_list.append(f"\n{index}. {order['Name']}: {order['TotalCost']} SEK\n")
+            order_str_list.append(f"\n{index}. Vehicle Type: {order['Name'].upper()} \n    Parts    |    Price \n")
         else:
             order_str_list.append(f"{order['Name']}:\n")
 
@@ -238,7 +244,7 @@ class OrderManager:
     
     def generate_invoice(self):
         with open("invoice.txt", "w") as file:
-            file.write("INVOICE\n")
+            file.write("           INVOICE\n")
             file.write("================================\n")
             for i, order in enumerate(self._orders, 1):
                 file.write(self.format_order(order, i))
@@ -287,14 +293,17 @@ class MainApp(App):
             btn.bind(on_release=lambda btn=btn: self.dropdown.select(btn.text))
             self.dropdown.add_widget(btn)
         
-        self.main_button = Button(text="Select Vehicle", 
-                                size_hint_y=None, height=40, background_color=[1, 0, 0, 1])
+        self.main_button = Button(text="Select Vehicle to Order", 
+                          size_hint_y=None, height=40, 
+                          background_normal='Solid_yellow.png', 
+                          background_down='Solid_yellow.png',
+                          color=[0, 0, 0, 1])
         
         self.main_button.bind(on_release=self.dropdown.open)
         self.dropdown.bind(on_select=self.on_select)
         
         engine_input_layout = BoxLayout(size_hint_y=None, height=230)
-        self.engine_input = TextInput(hint_text="Enter Engine Size", input_filter="int", 
+        self.engine_input = TextInput(hint_text="Size of Engine to Fit", input_filter="int", 
                                     size_hint_y=None, height=40)
         
         engine_input_layout.add_widget(Widget(size_hint_x=0.50))  # Empty space
@@ -342,13 +351,20 @@ class MainApp(App):
         }
         vehicle_type = vehicle_type_map.get(self.main_button.text)
         
+        # Check if a vehicle type has been selected
+        if vehicle_type is None:
+            popup = Popup(title='Input Error',
+                        content=Label(text='Please select a vehicle type.'),
+                        size_hint=(0.5, 0.3))
+            popup.open()
+            return
+        
         # Displays a popup for the case where the engine 
         # size is not selected when purchasing motor vehicles.
-
         if not self.engine_input.disabled and not self.engine_input.text.strip():
             popup = Popup(title='Input Error',
-                          content=Label(text='Please enter engine size.'),
-                          size_hint=(0.5, 0.3))
+                        content=Label(text='Please enter engine size.'),
+                        size_hint=(0.5, 0.3))
             popup.open()
             return
         
